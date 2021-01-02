@@ -91,13 +91,15 @@ class IHandHistory(Interface):
 
 
 class _BaseStreet:
-    def __init__(self, flop):
+    def __init__(self, lines, street_name):
         self.pot = None
         self.actions = None
         self.cards = None
-        self._parse_cards(flop[0])
-        self._parse_actions(flop[1:])
-        self._all_combinations = itertools.combinations(self.cards, 2)
+        if street_name != "preflop":
+            self._parse_cards(lines[0])
+        self._parse_actions(lines[1:])
+        if self.cards is not None:
+            self._all_combinations = itertools.combinations(self.cards, 2)
 
     @cached_property
     def is_rainbow(self):
