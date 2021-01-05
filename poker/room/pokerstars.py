@@ -21,6 +21,8 @@ class _Street(hh._BaseStreet):
     _board_re = re.compile(
         r"\[([A-Z0-9][a-z])(?:\s?([A-Z0-9][a-z]))?(?:\s?([A-Z0-9][a-z]))?(?:\s?([A-Z0-9][a-z]))?\](?: \[([A-Z0-9]["
         r"a-z])\])?")
+    _uncalled_re = re.compile(r"Uncalled bet \(\$(\d+(?:\.\d+)?)\) returned to (?P<name>.+)")
+    _collected_re = re.compile(r"(?P<name>.+?) collected \$(\d+(?:\.\d+)?) from pot")
 
     def _parse_cards(self, boardline):
         groups = [group for group in self._board_re.match(boardline).groups() if group is not None]
@@ -48,19 +50,21 @@ class _Street(hh._BaseStreet):
         self.actions = tuple(actions) if actions else None
 
     def _parse_uncalled(self, line):
-        first_paren_index = line.find("(")
-        second_paren_index = line.find(")")
-        amount = line[first_paren_index + 1 : second_paren_index]
-        name_start_index = line.find("to ") + 3
-        name = line[name_start_index:]
+        # first_paren_index = line.find("(")
+        # second_paren_index = line.find(")")
+        # amount = line[first_paren_index + 1 : second_paren_index]
+        # name_start_index = line.find("to ") + 3
+        # name = line[name_start_index:]
+        amount, name = self._uncalled_re.match(line).groups()
         return name, Action.RETURN, Decimal(amount)
 
     def _parse_collected(self, line):
-        first_space_index = line.find(" ")
-        name = line[:first_space_index]
-        second_space_index = line.find(" ", first_space_index + 1)
-        third_space_index = line.find(" ", second_space_index + 1)
-        amount = line[second_space_index + 1 : third_space_index]
+        # first_space_index = line.find(" ")
+        # name = line[:first_space_index]
+        # second_space_index = line.find(" ", first_space_index + 1)
+        # third_space_index = line.find(" ", second_space_index + 1)
+        # amount = line[second_space_index + 1 : third_space_index]
+        name, amount = self._collected_re.match(line).groups()
         self.pot = Decimal(amount)
         return name, Action.WIN, self.pot
 
@@ -117,7 +121,7 @@ class PokerStarsHandHistory(hh._SplittableHandHistoryMixin, hh._BaseHandHistory)
         r"^Seat (?P<seat>\d+): (?P<name>.+?) \(\$?(?P<stack>\d+(\.\d+)?) in chips\)"
     )  # noqa
     _hero_re = re.compile(r"^Dealt to (?P<hero_name>.+?) \[(..) (..)\]")
-    _pot_re = re.compile(r"^Total pot \$(\d+(?:\.\d+)?) .*\| Rake \$(\d+(?:\.\d+)?)")
+    _pot_re = re.compile(r"^Total pot \$?(\d+(?:\.\d+)?) .*\| Rake \$?(\d+(?:\.\d+)?)")
     _winner_re = re.compile(r"^Seat (\d+): (.+?) collected \((\d+(?:\.\d+)?)\)")
     _showdown_re = re.compile(r"^Seat (\d+): (.+?) showed \[.+?\] and won")
     _ante_re = re.compile(r".*posts the ante (\d+(?:\.\d+)?)")
@@ -193,7 +197,7 @@ class PokerStarsHandHistory(hh._SplittableHandHistoryMixin, hh._BaseHandHistory)
         self._parse_showdown()
         self._parse_pot()
         # self._parse_board()
-        self._parse_winners()
+        # self._parse_winners()
 
         self._del_split_vars()
         self.parsed = True
@@ -248,7 +252,8 @@ class PokerStarsHandHistory(hh._SplittableHandHistoryMixin, hh._BaseHandHistory)
         potline = self._splitted[self._sections[-1] + 2]
         match = self._pot_re.match(potline)
         self.total_pot = float(match.group(1))
-        self.rake = float(match.group(2))
+        if self.game_type == GameType.CASH:
+            self.rake = float(match.group(2))
 
     # def _parse_board(self):
     #     boardline = self._splitted[self._sections[-1] + 3]
@@ -258,18 +263,18 @@ class PokerStarsHandHistory(hh._SplittableHandHistoryMixin, hh._BaseHandHistory)
         # self.turn = Card(cards[3]) if len(cards) > 3 else None
         # self.river = Card(cards[4]) if len(cards) > 4 else None
 
-    def _parse_winners(self):
-        winners = set()
-        start = self._sections[-1] + 4
-        for line in self._splitted[start:]:
-            if not self.show_down and "collected" in line:
-                match = self._winner_re.match(line)
-                winners.add(match.group(2))
-            elif self.show_down and "won" in line:
-                match = self._showdown_re.match(line)
-                winners.add(match.group(2))
-
-        self.winners = tuple(winners)
+    # def _parse_winners(self):
+    #     winners = set()
+    #     start = self._sections[-1] + 4
+    #     for line in self._splitted[start:]:
+    #         if not self.show_down and "collected" in line:
+    #             match = self._winner_re.match(line)
+    #             winners.add(match.group(2))
+    #         elif self.show_down and "won" in line:
+    #             match = self._showdown_re.match(line)
+    #             winners.add(match.group(2))
+    #
+    #     self.winners = tuple(winners)
 
 
 @attr.s(slots=True)
