@@ -20,6 +20,7 @@ class _Player:
     stack = attr.ib()
     seat = attr.ib()
     combo = attr.ib()
+    position = attr.ib(default=None)
 
 
 @attr.s(slots=True)
@@ -219,4 +220,5 @@ class _SplittableHandHistoryMixin:
         self._sections = [ind for ind, elem in enumerate(self._splitted) if not elem]
 
     def _del_split_vars(self):
-        del self._splitted, self._sections
+        pass
+    #     del self._splitted, self._sections
